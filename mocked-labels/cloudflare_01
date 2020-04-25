@@ -1,0 +1,5 @@
+com.dnsdrone.cf.zone.identifier="cf0101023e105f4ecef8ad9ca31a8372"
+com.dnsdrone.cf.dns.identifier="cf0101023e105f4ecef8ad9ca31a8372"
+com.dnsdrone.cf.dns.type="A"
+com.dnsdrone.cf.dns.name="example.com"
+com.dnsdrone.cf.dns.ttl="120"

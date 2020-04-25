@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+
+VERSION="${VERSION?"missing value for version!"}"
+IMAGE="${IMAGE?"missing value for image!"}"
+
+COMMAND="$1"
+IDLE_TIME_PARAM="${2:-0}"
+
+DNSDRONE_MOCKER_IDLETYPE_LABELBASE="com.dnsdrone.mocker.idletype"
+SPAWN_PERSISTENT="${SPAWN_PERSISTENT:=10}"
+SPAWN_DYNAMIC="${SPAWN_DYNAMIC:=15}"
+SPAWN_MIN_LIFESPAN="${SPAWN_MIN_LIFESPAN:=5}"
+SPAWN_MAX_LIFESPAN="${SPAWN_MAX_LIFESPAN:=10}"
+MOCKED_LABELS_GLOB="${MOCKED_LABELS_GLOB:=*}"
+
+HELP_MESSAGE="
+dnsdrone-mocker [${VERSION}]
+
+Usage:
+  mocker [command] [params]
+
+Available Commands:
+  seed                   seeds idling docker containers
+  idle [int minutes]     idles a given amount of minutes or infinite
+"
+
+# get a random value between first and second number
+random_between() {
+    local min=$1
+    local max=$2
+    local diff=$((max - min + 1))
+
+    echo $((min + RANDOM % diff))
+}
+
+
+: '
+**********************************
+*   SEED COMMAND
+**********************************
+'
+seed_command() {
+    seed_remove_labelled() {
+        local label_value=$1
+
+        docker rm $(docker stop $(docker ps -a -q --filter "label=${DNSDRONE_MOCKER_IDLETYPE_LABELBASE}=${label_value}" --format="{{.ID}}") &> /dev/null) &> /dev/null
+    }
+
+    seed_pre_cleanup() {
+        seed_remove_labelled "persistent"
+        seed_remove_labelled "dynamic"
+    }
+
+    seed_exit() {
+        echo -en "\r               \n"
+        echo "stopping and removing persistent containers..."
+        seed_remove_labelled "persistent"
+        echo "stopping and removing dynamic containers..."
+        seed_remove_labelled "dynamic"
+        echo "done - good bye!"
+
+        exit 0
+    }
+
+    seed_get_random_label_file() {
+        files=(./mocked-labels/$MOCKED_LABELS_GLOB)
+
+        echo "${files[RANDOM % ${#files[@]}]}"
+    }
+
+    seed_print_persistent_state() {
+        tput cuu1; tput el1
+        tput cuu1; tput el1
+        echo "  running persistent containers $(printf "%02d/%02d" $1 ${SPAWN_PERSISTENT})"
+        echo "  running dynamic containers    $(printf "%02d/%02d" 0 ${SPAWN_DYNAMIC}) [${SPAWN_MIN_LIFESPAN}m-${SPAWN_MAX_LIFESPAN}m]"
+    }
+
+    seed_persistent_containers() {
+        echo
+        seed_print_persistent_state 0
+        sleep 1s
+
+        for ((i = 1; i <= $SPAWN_PERSISTENT; i++)); do
+            docker run -d --rm \
+                --name "dnsdrone-persistent-$i" \
+                --label "${DNSDRONE_MOCKER_IDLETYPE_LABELBASE}=persistent" \
+                --label-file $(seed_get_random_label_file) \
+                ${IMAGE}:${VERSION} idle &> /dev/null
+
+            seed_print_persistent_state ${i}
+
+            sleep 1s
+        done
+    }
+
+    seed_print_dynamic_state() {
+        tput cuu1; tput el1
+        echo "  running dynamic containers    $(printf "%02d/%02d" $1 ${SPAWN_DYNAMIC}) [${SPAWN_MIN_LIFESPAN}m-${SPAWN_MAX_LIFESPAN}m]"
+    }
+
+    seed_dynamic_containers() {
+        local container_number=1;
+
+        seed_print_dynamic_state 0
+
+        while :; do
+            local current_running=$(docker ps --filter "label=${DNSDRONE_MOCKER_IDLETYPE_LABELBASE}=dynamic" | wc -l  | awk '{print $1-1}')
+
+            if (( $current_running < $SPAWN_DYNAMIC )); then
+                local idle_time=$(random_between ${SPAWN_MIN_LIFESPAN} ${SPAWN_MAX_LIFESPAN})
+
+                docker run -d --rm \
+                    --name "dnsdrone-dynamic-$container_number" \
+                    --label "${DNSDRONE_MOCKER_IDLETYPE_LABELBASE}=dynamic" \
+                    --label-file $(seed_get_random_label_file) \
+                    ${IMAGE}:${VERSION} idle ${idle_time} &> /dev/null
+
+                ((container_number = container_number + 1))
+            fi
+
+            seed_print_dynamic_state ${current_running}
+
+            sleep 1s
+        done
+    }
+
+    trap seed_exit SIGINT SIGTERM SIGQUIT
+
+    seed_pre_cleanup
+
+    tput bold
+    echo "dnsdrone/mocker seeder:"
+    tput sgr0
+    echo
+
+    seed_persistent_containers
+    seed_dynamic_containers
+
+    while :; do
+        sleep 1m
+    done
+}
+
+
+: '
+**********************************
+*   IDLE COMMAND
+**********************************
+'
+idle_command() {
+    idle_exit() {
+        exit 0
+    }
+
+    idle_infinite() {
+        echo " ► idling infinite"
+
+        while :; do
+            sleep 1m
+        done
+    }
+
+    idle_finite() {
+        local remaining=$(($IDLE_TIME_PARAM * 60))
+
+        while [[ ${remaining} -gt 0 ]]; do
+            echo -en "\r                                            "
+            echo -en "\r ► ${remaining}s remaining"
+            sleep 1s
+            remaining=$((remaining - 1))
+        done
+
+        echo
+    }
+
+    trap idle_exit SIGINT SIGTERM SIGQUIT
+
+    if [[ ${IDLE_TIME_PARAM} -gt 0 ]]; then
+        echo "maximum idle time set to ${IDLE_TIME_PARAM} minutes"
+        idle_finite
+    else
+        echo "no maximum idle time set"
+        idle_infinite
+    fi
+}
+
+
+
+: '
+**********************************
+*   COMMAND PARSER
+**********************************
+'
+case "$1" in
+    "seed")
+        seed_command
+        ;;
+    "idle")
+        idle_command
+        ;;
+    "help"|"-h"|"--help")
+        echo "${HELP_MESSAGE}"
+        exit 0
+        ;;
+    *)
+        echo "${HELP_MESSAGE}"
+        exit 1
+        ;;
+esac

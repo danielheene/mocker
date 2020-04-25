@@ -1,0 +1,8 @@
+com.dnsdrone.cf.zone.identifier="cf04023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[0].dns.identifier="cf04023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[0].dns.type="CNAME"
+com.dnsdrone.cf[0].dns.name="cname.example.com"
+com.dnsdrone.cf[0].dns.content="target.example.com"
+com.dnsdrone.cf[0].dns.ttl="120"
+com.dnsdrone.cf[1].dns.identifier="cf04023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[1].dns.name="a-record.example.com"

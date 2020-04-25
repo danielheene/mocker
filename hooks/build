@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -e
+
+VERSION=${DOCKER_TAG}
+IMAGE="dnsdrone/mocker"
+
+echo "► BUILDING IMAGE ${IMAGE}:${VERSION}"
+
+docker build \
+    --compress \
+    --no-cache \
+    --build-arg VERSION=${VERSION} \
+    --build-arg IMAGE=${IMAGE} \
+    --tag ${IMAGE}:${VERSION} .

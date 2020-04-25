@@ -1,0 +1,4 @@
+com.dnsdrone.cf.zone.identifier="cf03023e105f4ecef8ad9ca31a8372da"
+com.dnsdrone.cf.dns.identifier="cf03023e105f4ecef8ad9ca31a8372da"
+com.dnsdrone.cf.dns.type="A"
+com.dnsdrone.cf.dns.name="dummy.tld"

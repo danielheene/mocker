@@ -1,0 +1,5 @@
+com.dnsdrone.cf.zone.identifier="cf05023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[0].dns.identifier="cf05023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[0].dns.name="first.subdomain.org"
+com.dnsdrone.cf[1].dns.identifier="cf05023e105f4ecef8ad9ca31a8372d0"
+com.dnsdrone.cf[1].dns.name="second.subdomain.org"
